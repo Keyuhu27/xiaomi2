@@ -87,6 +87,24 @@ trixie 的官方源把 openjdk-17 全系列包都下架了（只留 openjdk-21�
 后端本身是用 `maven:3.8-openjdk-17` 编译的，运行环境继续钉在 bookworm/JDK 17
 跟编译时保持一致，不需要去验证换成 JRE 21 兼不兼容。
 
+**第三次更新**：openjdk-17 装上之后，构建往前走到了前端构建阶段
+（`frontend-builder`），新报错：
+
+```
+Error: ERR_PNPM_IGNORED_BUILDS
+Ignored build scripts: core-js@2.6.12, esbuild@0.25.12
+help: Run "pnpm approve-builds" to pick which dependencies should be allowed to run scripts.
+```
+
+原因还是同一类问题：`npm install -g pnpm` 没写版本号，装的是构建时的最新版。
+pnpm 从 v10 开始，出于供应链安全考虑，默认不再自动运行依赖包的 postinstall
+脚本，需要交互式运行 `pnpm approve-builds` 才能放行，Docker 构建这种非交互
+环境里直接报错退出。而 `ui/pnpm-lock.yaml` 里 `lockfileVersion: 9.0`，说明
+这个锁文件是 pnpm 9.x 生成的，那个版本还没有这个强制审批机制。
+
+**已修复**：两处 `npm install -g pnpm` 都改成 `npm install -g pnpm@9`，
+跟锁文件版本对齐。
+
 ⚠️ 还有一处**没有改、暂时不确定要不要改**：`ui/pnpm-lock.yaml` 和
 `genie-client/uv.lock` / `genie-tool/uv.lock` 这几个锁文件里，每个具体依赖包的
 下载地址被**直接钉死**成了 `registry.npmmirror.com` / `pypi.tuna.tsinghua.edu.cn`

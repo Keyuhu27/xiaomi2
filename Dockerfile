@@ -1,7 +1,12 @@
 # 前端构建阶段
 FROM node:20-alpine as frontend-builder
 WORKDIR /app
-RUN npm install -g pnpm
+# [部署到 Railway 时改动] 固定装 pnpm 9(跟 ui/pnpm-lock.yaml 里的
+# lockfileVersion: 9.0 对应)，不装不带版本号的最新版。pnpm 从 v10 开始默认
+# 不再自动跑依赖包的 postinstall 脚本，需要交互式运行 pnpm approve-builds
+# 才能放行，在 Docker 构建这种非交互环境里会直接报错退出
+# (ERR_PNPM_IGNORED_BUILDS)。
+RUN npm install -g pnpm@9
 COPY ui/package.json ./
 RUN pnpm install
 COPY ui/ .
@@ -51,7 +56,7 @@ RUN apt-get clean && \
     nodejs \
     npm \
     && rm -rf /var/lib/apt/lists/* \
-    && npm install -g pnpm
+    && npm install -g pnpm@9
 
 # 设置工作目录
 WORKDIR /app
