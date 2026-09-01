@@ -65,6 +65,13 @@ WORKDIR /app
 COPY --from=frontend-builder /app/dist /app/ui/dist
 COPY --from=frontend-builder /app/package.json /app/ui/package.json
 COPY --from=frontend-builder /app/node_modules /app/ui/node_modules
+# [部署到 Railway 时改动] 之前漏拷了 vite.config.ts——容器启动时跑的
+# pnpm preview（= vite preview）需要读这个文件才知道 preview.allowedHosts
+# 之类的设置，文件不存在就会用 Vite 自己的默认值（严格模式，拒绝陌生
+# host），导致浏览器打开生成的 Railway 域名时报 "Blocked request"，
+# 跟这个文件里的内容改没改对完全无关，因为运行时根本读不到它。
+COPY --from=frontend-builder /app/vite.config.ts /app/ui/vite.config.ts
+COPY --from=frontend-builder /app/.env.production /app/ui/.env.production
 
 # 复制后端构建产物
 COPY --from=backend-builder /app/target /app/backend/target

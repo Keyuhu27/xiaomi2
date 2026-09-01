@@ -118,6 +118,32 @@ Build Failed: ... process "/bin/sh -c pnpm build" did not complete successfully:
 文件里确实没有任何地方用到它，去掉了这一个导入。另外扫了一遍
 `ui/src` 下所有文件有没有类似的"导入了但没用到"的情况，没发现别的。
 
+**第五次更新**：前端构建终于全部通过、部署成功后，打开生成的域名报错：
+
+```
+Blocked request. This host ("xiaomi2-production.up.railway.app") is not allowed.
+To allow this host, add "xiaomi2-production.up.railway.app" to `preview.allowedHosts` in vite.config.js.
+```
+
+排查过程：一开始以为是 `vite.config.ts` 里 `preview.allowedHosts: true` 这个设置
+没生效（专门在沙盒里用同一个 vite 版本复现验证过，确认这个设置本身是对的），
+但改代码、重新部署都没用，最后发现真正原因是 **Dockerfile 最终运行阶段根本
+没把 `vite.config.ts` 拷进最终镜像**：
+
+```dockerfile
+COPY --from=frontend-builder /app/dist /app/ui/dist
+COPY --from=frontend-builder /app/package.json /app/ui/package.json
+COPY --from=frontend-builder /app/node_modules /app/ui/node_modules
+```
+
+只拷了 `dist`/`package.json`/`node_modules`，容器启动时跑的 `pnpm preview`
+（= `vite preview`）需要读 `vite.config.ts` 才知道 `allowedHosts` 之类的
+运行时设置，这个文件不存在的话 Vite 会用它自己的默认值（严格模式，拒绝
+陌生 host），跟代码内容改没改对完全无关，因为运行时压根读不到这个文件。
+
+**已修复**：补上了 `COPY --from=frontend-builder /app/vite.config.ts ...`
+和 `.env.production` 这两行。
+
 ⚠️ 还有一处**没有改、暂时不确定要不要改**：`ui/pnpm-lock.yaml` 和
 `genie-client/uv.lock` / `genie-tool/uv.lock` 这几个锁文件里，每个具体依赖包的
 下载地址被**直接钉死**成了 `registry.npmmirror.com` / `pypi.tuna.tsinghua.edu.cn`
