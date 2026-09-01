@@ -31,6 +31,33 @@
    **建议部署后第一次实际打开网页确认一下能正常聊天，不能聊天的话大概率是
    这部分需要再调**。
 
+## 部署失败排查记录：Build image 秒失败
+
+第一次部署时 "Build > Build image" 只跑了 2 秒左右就失败了。构建这么复杂的
+镜像（Java+Node+Python 三套环境）正常要几分钟，2 秒内失败基本不可能是编译出的
+错，更像是**连第一步都没走通**——原始 Dockerfile 的三个 `FROM` 都写的是
+`docker.m.daocloud.io/library/...`（国内的 Docker Hub 镜像加速服务），这类服务
+通常只对国内 IP 提供稳定访问，Railway 的构建机（这个项目是 US West 区域）大概率
+连不上或者直接被拒绝，Docker 在拉取不到基础镜像时会立刻失败，跟"2 秒失败"这个
+现象完全吻合。
+
+**已修复**：把 `Dockerfile` 里三处 `FROM docker.m.daocloud.io/library/xxx`
+都改回官方镜像（`node:20-alpine` / `maven:3.8-openjdk-17` / `python:3.11-slim`），
+同时把用不到的 `apt`（aliyun 源）、`npm`（npmmirror 显式 registry 配置）、
+`uv`（`UV_DEFAULT_INDEX` 指向清华源）这几处国内镜像的显式配置也一并去掉，
+改用默认的官方源，避免同样的问题在后面的构建步骤里重演。重新推送后应该能正常
+进入构建、耗时几分钟量级。
+
+⚠️ 还有一处**没有改、暂时不确定要不要改**：`ui/pnpm-lock.yaml` 和
+`genie-client/uv.lock` / `genie-tool/uv.lock` 这几个锁文件里，每个具体依赖包的
+下载地址被**直接钉死**成了 `registry.npmmirror.com` / `pypi.tuna.tsinghua.edu.cn`
+（这是生成锁文件时的镜像配置留下的，不是这次改的那几行配置能覆盖的）。这两个是
+公网可访问的公共 CDN，不是国内专属内网服务，大概率从 Railway 也能连通，只是
+理论上不如官方源稳定/快。**先按上面的修复重新部署一次**：如果这次顺利跑完，
+说明这两个锁文件不是问题，不用管；如果构建卡在 `pnpm install` 或 `uv sync`
+这两步很久然后超时/失败，再回来重新生成锁文件（删掉 `pnpm-lock.yaml` /
+`uv.lock` 后用官方源重新装一遍）。
+
 ## 需要在 Railway 的 Variables 里配置的环境变量
 
 | 变量 | 谁用 | 必须吗 | 说明 |
