@@ -174,6 +174,9 @@ def create_ci_agent(
             "numpy",
             "matplotlib",
             "seaborn",
+            # [验证 xiaomi 历史数据仓库能否接入沙盒时新增] 允许沙盒代码读写
+            # 挂载在 /data/genie-tool 上的持久化 DuckDB 仓库文件。
+            "duckdb",
         ],
         output_dir=output_dir,
     )

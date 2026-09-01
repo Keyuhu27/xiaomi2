@@ -8,6 +8,8 @@ dependencies = [
     "aiosqlite>=0.21.0",
     "asyncio>=4.0.0",
     "beautifulsoup4>=4.13.4",
+    # [验证 xiaomi 历史数据仓库能否接入 code_interpreter 沙盒时新增]
+    "duckdb>=1.1.0",
     "elasticsearch==7.17.12",
     "fastapi>=0.115.14",
     "greenlet>=3.2.3",
