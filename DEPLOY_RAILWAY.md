@@ -105,6 +105,19 @@ pnpm 从 v10 开始，出于供应链安全考虑，默认不再自动运行依�
 **已修复**：两处 `npm install -g pnpm` 都改成 `npm install -g pnpm@9`，
 跟锁文件版本对齐。
 
+**第四次更新**：pnpm 版本固定之后，构建走到了 `pnpm build`（前端 TypeScript
+编译）这一步才失败，这次是源码本身的问题，跟环境/工具链版本无关：
+
+```
+src/components/ActionView/FileList.tsx(3,36): error TS6133: 'useEffect' is declared but its value is never read.
+Build Failed: ... process "/bin/sh -c pnpm build" did not complete successfully: exit code: 1
+```
+
+项目开了 TypeScript 的 `noUnusedLocals` 严格检查，`FileList.tsx` 导入了
+`useEffect` 但整个文件都没用到，这是原始项目里遗留的一处死代码。已经确认
+文件里确实没有任何地方用到它，去掉了这一个导入。另外扫了一遍
+`ui/src` 下所有文件有没有类似的"导入了但没用到"的情况，没发现别的。
+
 ⚠️ 还有一处**没有改、暂时不确定要不要改**：`ui/pnpm-lock.yaml` 和
 `genie-client/uv.lock` / `genie-tool/uv.lock` 这几个锁文件里，每个具体依赖包的
 下载地址被**直接钉死**成了 `registry.npmmirror.com` / `pypi.tuna.tsinghua.edu.cn`
