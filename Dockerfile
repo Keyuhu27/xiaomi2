@@ -88,8 +88,11 @@ RUN chmod +x start.sh && \
     cp .env_template .env && \
     python -m genie_tool.db.db_engine
 
-# 设置数据卷
-VOLUME ["/data/genie-tool"]
+# [部署到 Railway 时改动] 原本这里有 VOLUME ["/data/genie-tool"]，Railway 的
+# 构建器不支持 Dockerfile 原生的 VOLUME 指令（会直接判定 Dockerfile 无效，
+# 构建都不会开始跑）。持久化改成完全由 Railway 自己的 Volume 功能负责——
+# 见 DEPLOY_RAILWAY.md，需要在 Settings → Volumes 里手动加一个挂载路径为
+# /data/genie-tool 的 Volume，不依赖这行声明也能正常持久化。
 
 # 复制统一启动脚本
 WORKDIR /app

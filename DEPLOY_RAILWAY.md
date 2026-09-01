@@ -48,6 +48,24 @@
 改用默认的官方源，避免同样的问题在后面的构建步骤里重演。重新推送后应该能正常
 进入构建、耗时几分钟量级。
 
+**更新**：上面这版修复推上去之后，Railway 又立刻失败了，这次去 Build Logs
+标签页看到了明确报错：
+
+```
+dockerfile invalid: docker VOLUME at Line 92 is not supported, use Railway Volumes
+```
+
+真正原因不是镜像源，是 Railway 的构建器**直接不支持 Dockerfile 里原生的
+`VOLUME` 指令**，只要 Dockerfile 里出现这一行就直接判定整个文件无效，连构建
+都不会开始跑——这也是为什么两次都是"2 秒内失败"：根本没到拉基础镜像那一步，
+是在校验 Dockerfile 语法阶段就被拒了。（前一版把镜像源换成官方源这个改动本身
+没错、不需要撤销，只是没找对真正原因。）
+
+**已修复**：删掉了 Dockerfile 里 `VOLUME ["/data/genie-tool"]` 这一行。数据
+持久化不受影响，完全由下面"需要挂载的持久化 Volume"这一节说的、在 Railway
+**Settings → Volumes** 里手动加的 Volume 负责，跟 Dockerfile 里有没有这行声明
+无关。
+
 ⚠️ 还有一处**没有改、暂时不确定要不要改**：`ui/pnpm-lock.yaml` 和
 `genie-client/uv.lock` / `genie-tool/uv.lock` 这几个锁文件里，每个具体依赖包的
 下载地址被**直接钉死**成了 `registry.npmmirror.com` / `pypi.tuna.tsinghua.edu.cn`
