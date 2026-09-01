@@ -66,6 +66,27 @@ dockerfile invalid: docker VOLUME at Line 92 is not supported, use Railway Volum
 **Settings → Volumes** 里手动加的 Volume 负责，跟 Dockerfile 里有没有这行声明
 无关。
 
+**再次更新**：VOLUME 那个问题修好之后，构建真正跑起来了（Build image 这步
+跑了 16 秒，不再是秒失败），但在最后运行阶段的 `apt-get install` 报了新错：
+
+```
+Package openjdk-17-jre-headless is not available, but is referred to by another package.
+However the following packages replace it:
+  openjdk-21-jre openjdk-21-jdk-headless
+E: Package 'openjdk-17-jre-headless' has no installation candidate
+```
+
+原因：最后运行阶段用的 `python:3.11-slim` 不带具体 Debian 版本号，这个标签
+跟着"当前最新稳定版 Debian"走，现在已经指向刚发布的 Debian 13（trixie），
+trixie 的官方源把 openjdk-17 全系列包都下架了（只留 openjdk-21）。原始项目
+写这个 Dockerfile 时这个标签大概率还指向 Debian 12（bookworm），bookworm
+是有 openjdk-17-jre-headless 的。
+
+**已修复**：把 `python-base` 和最终运行阶段这两处 `python:3.11-slim` 都改成
+显式钉死 `python:3.11-slim-bookworm`，不再跟着基础镜像自动升级到 trixie。
+后端本身是用 `maven:3.8-openjdk-17` 编译的，运行环境继续钉在 bookworm/JDK 17
+跟编译时保持一致，不需要去验证换成 JRE 21 兼不兼容。
+
 ⚠️ 还有一处**没有改、暂时不确定要不要改**：`ui/pnpm-lock.yaml` 和
 `genie-client/uv.lock` / `genie-tool/uv.lock` 这几个锁文件里，每个具体依赖包的
 下载地址被**直接钉死**成了 `registry.npmmirror.com` / `pypi.tuna.tsinghua.edu.cn`

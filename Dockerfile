@@ -17,7 +17,7 @@ RUN chmod +x build.sh start.sh
 RUN ./build.sh
 
 # Python 环境准备阶段
-FROM python:3.11-slim as python-base
+FROM python:3.11-slim-bookworm as python-base
 WORKDIR /app
 
 RUN apt-get clean && \
@@ -30,8 +30,15 @@ RUN apt-get clean && \
     && rm -rf /var/lib/apt/lists/*
 RUN pip install uv
 
+# [部署到 Railway 时改动] 显式钉死成 bookworm（Debian 12），不用不带版本号的
+# python:3.11-slim——那个标签会跟着"当前最新稳定版 Debian"自动升级，现在已经
+#指向 Debian 13(trixie)，而 trixie 的官方源砍掉了 openjdk-17 全系列的包
+# （只保留 openjdk-21），会导致下面装 openjdk-17-jre-headless 报
+# "has no installation candidate"。后端是用 maven:3.8-openjdk-17 编译的，
+# 运行环境继续钉在 bookworm 保持和编译时一致的 JDK 17，不用去验证换成 JRE 21
+# 兼不兼容。
 # 最终运行阶段
-FROM python:3.11-slim
+FROM python:3.11-slim-bookworm
 
 # 安装系统依赖
 RUN apt-get clean && \
